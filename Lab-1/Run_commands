@@ -1,0 +1,5 @@
+Runing prgs 
+gedit filename.c 
+mpicc filename.c -o filename.out
+mpirun -np 4 ./solved.out
+
