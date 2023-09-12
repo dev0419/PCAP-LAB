@@ -6,7 +6,7 @@ __global__ void convulution(int *n, int *m, int *p, int len, int maskLength)
 {    
     int tid=(blockIdx.x*blockDim.x)+threadIdx.x;
     int j;
-    //printf("blockid:%d,threadid:%d\n",blockIdx.x,threadIdx.x);
+    
     float pvalue=0;
     int start=tid-(maskLength/2);
     for(j=0;j<maskLength;j++)
