@@ -1,107 +1,72 @@
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define N 1024
+#include "cuda_runtime.h"
 
-__global__ void CUDACount(char* A, char* B, int* len, int* wordLen, int* cnt){
-    int idx = threadIdx.x, flag=1;
-    
-    if(idx + *wordLen <= *len){
-        for(int i=0; i<*wordLen; i++){
-            if(A[idx + i] != B[i]){
-                flag = 0;
-                break;
-            }
-        }
+#define n 1024
+#define nw 1024
 
-        if(flag==1)
-            atomicAdd(cnt, 1);
+__global__ void countWords(char* a, char* w, int* start_index, int* len_words, unsigned int l_w, unsigned int* d_count) {
+    int id = threadIdx.x;
+    if (len_words[id] < l_w) {
+        return;
     }
+    int start = start_index[id];
+    for (int i = 0; i < l_w; i++) {
+        if (a[start + i] != w[i])
+            return;
+    }
+    atomicAdd(d_count, 1);
 }
 
-int main(){
-    char A[N], B[N];
-    char *d_A, *d_B;
-
-    int count=0, len, wordLen,res;
-    int *d_count, *d_len, *d_wordLen;
-
-    cudaError_t err = cudaGetLastError();
-
-    printf("Enter String : ");
-    scanf("%[^\n]%*c", A);
-    printf("String : %s\n\n", A);
-
-    printf("Enter Word to be searched in String : ");
-    scanf("%s", B);
-    printf("Word : %s\n\n", B);
-
-    len = strlen(A);
-    wordLen = strlen(B);
-
-    err = cudaGetLastError();
-    if(err != cudaSuccess)
-        printf("CUDA Error Occured 1 : %s\n", cudaGetErrorString(err));
-
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-    cudaEventRecord(start, 0);
+int main() {
+    char a[n], w[n];
+    char* d_A, * d_W;
+    int start_index[nw], len_words[nw];
+    int* d_start_index, * d_len_words;
+    int len;
+    unsigned int count = 0, * d_count, result;
     
-    err = cudaGetLastError();
-    if(err != cudaSuccess)
-        printf("CUDA Error Occured 2 : %s\n", cudaGetErrorString(err));
+    printf("Enter the string:\n");
+    scanf(" %[^\n]s", a);
 
-    cudaMalloc((void**)&d_A, strlen(A)*sizeof(char));
-    cudaMalloc((void**)&d_B, strlen(B)*sizeof(char));
-    cudaMalloc((void**)&d_count, sizeof(int));
-    cudaMalloc((void**)&d_len, sizeof(int));
-    cudaMalloc((void**)&d_wordLen, sizeof(int));
-    cudaMalloc((void**)&res, sizeof(int));
-
-    err = cudaGetLastError();
-    if(err != cudaSuccess)
-        printf("CUDA Error Occured 3 : %s\n", cudaGetErrorString(err));
-
-    cudaMemcpy(d_count, &count, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_len, &len, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_wordLen, &wordLen, sizeof(int), cudaMemcpyHostToDevice);
+    printf("Enter the word to be searched:\n");
+    scanf(" %[^\n]s", w);
+    len = strlen(a);
+    int i = 0, k = 0;
     
-    err = cudaGetLastError();
-    if(err != cudaSuccess)
-        printf("CUDA Error Occured 3.5 : %s\n", cudaGetErrorString(err));
-        
-    cudaMemcpy(d_A, A, strlen(A)*sizeof(char), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_B, B, strlen(B)*sizeof(char), cudaMemcpyHostToDevice);
+    while (i < len) {
+        while (i < len && a[i] == ' ')
+            i++;
+        start_index[k] = i;
+        while (i < len && a[i] != ' ')
+            i++;
+        len_words[k] = i - start_index[k];
+        k++;
+    }
 
-
-    err = cudaGetLastError();
-    if(err != cudaSuccess)
-        printf("CUDA Error Occured 4 : %s\n", cudaGetErrorString(err));
-
-    CUDACount<<<1, strlen(A)>>>(d_A, d_B, d_len, d_wordLen, d_count);
-
-    err = cudaGetLastError();
-    if(err != cudaSuccess)
-        printf("CUDA Error Occured 5 : %s\n", cudaGetErrorString(err));
-
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-
-    float elapsedTime;
-    cudaEventElapsedTime(&elapsedTime, start, stop);
+    if (len_words[k - 1] == 0)
+        k--;
     
+    cudaMalloc((void**)&d_A, strlen(a) * sizeof(char));
+    cudaMalloc((void**)&d_W, strlen(w) * sizeof(char));
+    cudaMalloc((void**)&d_start_index, k * sizeof(int));
+    cudaMalloc((void**)&d_len_words, k * sizeof(int));
+    cudaMalloc((void**)&d_count, sizeof(unsigned int));
+    
+    cudaMemcpy(d_A, a, strlen(a) * sizeof(char), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_W, w, strlen(w) * sizeof(char), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_start_index, start_index, k * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_len_words, len_words, k * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_count, &count, sizeof(unsigned int), cudaMemcpyHostToDevice);
+    
+    countWords<<<1, k>>>(d_A, d_W, d_start_index, d_len_words, strlen(w), d_count);
 
-    cudaMemcpy(&res, d_count, sizeof(int), cudaMemcpyDeviceToHost);
-    printf("Total Occurances of '%s' = %d\n", B, res);
+    cudaMemcpy(&result, d_count, sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    
+    printf("Total occurrences of %s: %u\n", w, result);
+    
+    cudaFree(d_A); cudaFree(d_W); cudaFree(d_start_index); cudaFree(d_len_words); cudaFree(d_count);
 
-    cudaFree(d_A);
-    cudaFree(d_B);
-    cudaFree(d_len);
-    cudaFree(d_wordLen);
-    cudaFree(d_count);
     return 0;
 }
