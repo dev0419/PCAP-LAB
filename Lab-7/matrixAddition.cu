@@ -1,3 +1,4 @@
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<cuda_runtime.h>
@@ -17,7 +18,7 @@ __global__ void addCol(int* a,int* b,int* c, int ha,int hb){
 __global__ void addElement(int* a, int* b, int* c,int wa,int wb){
     int row = threadIdx.y;
     int col = threadIdx.x;
-    c[row*wb + col] = (a[row*wb + col] + a[row*wa + col]);
+    c[row*wb + col] = (a[row*wb + col] + b[row*wb + col]);
 }
 
 void printMatrix(int* a, int row, int col){
@@ -76,3 +77,4 @@ int main(){
     free(c);
     return 0;
 }
+
