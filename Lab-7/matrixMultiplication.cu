@@ -1,3 +1,4 @@
+%%cuda --name prg8.cu
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda_runtime.h>
@@ -5,18 +6,13 @@
 __global__ void multiply_rowWise(int* a, int* b, int* c, int wa, int wb) {
     int ridA = threadIdx.x;
     int sum;
-
     for (int cidB = 0; cidB < wb; cidB++) {
         sum = 0;
-
-        for (int k = 0; k < wa; k++) {
+        for (int k = 0; k < wa; k++) 
             sum += (a[ridA * wa + k] * b[k * wb + cidB]);
-        }
-
         c[ridA * wb + cidB] = sum;
     }
 }
-
 
 __global__ void multiply_Colwise(int* a, int* b, int* c, int ha, int wa) {
     int cidB = threadIdx.x;
@@ -24,27 +20,28 @@ __global__ void multiply_Colwise(int* a, int* b, int* c, int ha, int wa) {
 
     for (int ridA = 0; ridA < ha; ridA++) {
         int sum = 0; 
-
-        for (int k = 0; k < wa; k++) {
+        for (int k = 0; k < wa; k++) 
             sum += (a[ridA * wa + k] * b[k * wb + cidB]); 
-        }
-
         c[ridA * wb + cidB] = sum;
     }
 }
 
-
 __global__ void multiplyKernel(int* a, int* b, int* c, int wa, int wb) {
     int ridA = threadIdx.y; 
     int cidB = threadIdx.x; 
-
     int sum = 0;
-
-    for (int k = 0; k < wa; k++) {
+    for (int k = 0; k < wa; k++) 
         sum += (a[ridA * wa + k] * b[k * wb + cidB]);
-    }
-
     c[ridA * wb + cidB] = sum;
+}
+
+void printMatrix(int* a,int row,int col){
+    for(int i = 0;i < row;i++){
+        for(int j = 0;j < col;j++){
+          printf("%d ", a[i*col + j]);
+        }
+        printf("\n");
+    }
 }
 
 
@@ -58,39 +55,22 @@ void Multiply(int* a, int* b, int* c, int wa, int wb, int ha) {
     cudaMemcpy(d_B, b, size, cudaMemcpyHostToDevice);
 
     multiply_rowWise<<<1, ha>>>(d_A, d_B, d_C, wa, wb);
-
-
     cudaMemcpy(c, d_C, size, cudaMemcpyDeviceToHost);
 
     printf("Result of row-wise matrix multiplication:\n");
-    for (int i = 0; i < ha; i++) {
-        for (int j = 0; j < wb; j++) {
-            printf("%d ", c[i * wb + j]);
-        }
-        printf("\n");
-    }
+    printMatrix(c,ha,wb);
 
     multiply_Colwise<<<1, wb>>>(d_A, d_B, d_C, ha, wa);
     cudaMemcpy(c, d_C, size, cudaMemcpyDeviceToHost);
     printf("\nResult of column-wise matrix multiplication:\n");
-    for (int i = 0; i < ha; i++) {
-        for (int j = 0; j < wb; j++) {
-            printf("%d ", c[i * wb + j]);
-        }
-        printf("\n");
-    }
+    printMatrix(c,ha,wb);
+
     dim3 blockSize(wb, ha);
     multiplyKernel<<<1, blockSize>>>(d_A, d_B, d_C, wa, wb);
-
     cudaMemcpy(c, d_C, size, cudaMemcpyDeviceToHost);
 
     printf("\nResult of matrix multiplication element-wise:\n");
-    for (int i = 0; i < ha; i++) {
-        for (int j = 0; j < wb; j++) {
-            printf("%d ", c[i * wb + j]);
-        }
-        printf("\n");
-    }
+    printMatrix(c,ha,wb);
 
     cudaFree(d_A);
     cudaFree(d_B);
@@ -128,6 +108,5 @@ int main() {
     free(a);
     free(b);
     free(c);
-
     return 0;
 }
