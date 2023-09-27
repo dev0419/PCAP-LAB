@@ -8,7 +8,7 @@ __global__ void convolutionKernel(int* N, int* M, int* P, int width, int mask_wi
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     int start = i - (mask_width / 2);
     for (int j = 0; j < mask_width; j++) {    
-        if (start >= 0 && start < width) {
+        if (start+j >= 0 && start+j < width) {
             pval += N[start + j] * M[j];
         }
     }
