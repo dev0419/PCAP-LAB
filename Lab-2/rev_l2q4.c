@@ -28,14 +28,10 @@ int main(int argc, char *argv[]){
         //(rank + 1) % size calculates the rank of the next process in a circular manner 
             /*For process with rank 0 (rank = 0):
     (0 + 1) % 4 = 1 % 4 = 1
-
     For process with rank 1 (rank = 1):
     (1 + 1) % 4 = 2 % 4 = 2
-
     For process with rank 2 (rank = 2):
-    (2 + 1) % 4 = 3 % 4 = 3
-
-    For process with rank 3 (rank*/
+    (2 + 1) % 4 = 3 % 4 = 3*/
         MPI_Ssend(&num,1,MPI_INT,(rank+1)%size,rank,MPI_COMM_WORLD);
         fprintf(stdout,"Process (rank %d) send %d to Process (rank %d)\n",rank,num,(rank+1)%size);
         fflush(stdout);
