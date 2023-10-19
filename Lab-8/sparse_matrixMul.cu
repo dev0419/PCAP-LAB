@@ -1,3 +1,4 @@
+%%cuda --name prg3.cu
 #include<cuda_runtime.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -32,6 +33,11 @@ void csr(int n,int m,int non_zero_count,int* data,int* col_index,int* row_ptr,in
     for(int i = 0; i < m;i++)
       printf("%d ",y[i]);
     printf("\n");
+    cudaFree(d_x);
+    cudaFree(d_y);
+    cudaFree(d_data);
+    cudaFree(d_row_ptr);
+    cudaFree(d_col_index);
 }
 
 int main(){
