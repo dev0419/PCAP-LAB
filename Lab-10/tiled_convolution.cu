@@ -1,19 +1,18 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<cuda_runtime.h>
-
 __global__ void convolution(int* N,int* M,int* P,int width,int mask_width){
-    int tid = threadIdx.x;
     __shared__ int value;
-    int start = tid - mask_width/2;
+    int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    int start = tid - (mask_width/2);
     P[tid] = 0;
-    for(int i = 0; i < mask_width;i++){
+    for(int i = 0;i < mask_width;i++){
         if(tid == 0)
             value = M[i];
         __syncthreads();
-        if(start + i >= 0 && start + i)
-            P[tid] += N[start + i] * value;
-        __syncthreads();
+        if(start + i >= 0 && start + i < width)
+            P[tid] += N[start+i]*value;  
+        __syncthreads();    
     }
 }
 
