@@ -1,61 +1,63 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <cuda_runtime.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<cuda_runtime.h>
 #define MASK_SIZE 3
 
 __constant__ int mask[MASK_SIZE];
 
-__global__ void convolution(int* input, int* output, int width) {
-    int tid = threadIdx.x + blockDim.x * blockIdx.x;
-    if (tid < width) {
+__global__ void convolution(int* N,int* P,int width,int mask_width){
+    int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    if(tid < width){
         int res = 0;
-        for (int i = 0; i < MASK_SIZE; i++) {
-            int idx = tid - MASK_SIZE / 2 + i;
-            if (idx >= 0 && idx < width) {
-                res += input[idx] * mask[i];
+        int start = tid  - mask_width/2;
+        for(int i = 0;i < mask_width;i++){
+            if(start + i >= 0 && start + i < width){
+                res += N[start + i]*mask[i];
             }
         }
-        output[tid] = res;
+        P[tid] = res;
     }
 }
 
-int main() {
-    int width, *input, *output, *d_input, *d_output;
-    printf("Enter the width:\n");
-    scanf("%d", &width);
-    input = (int*)malloc(sizeof(int) * width);
-    output = (int*)malloc(sizeof(int) * width);
-
-    printf("Enter the array elements:\n");
-    for (int i = 0; i < width; i++)
-        scanf("%d", &input[i]);
-
-    printf("Enter the mask elements:\n");
-    int maskElements[MASK_SIZE];
-    for (int i = 0; i < MASK_SIZE; i++)
-        scanf("%d", &maskElements[i]);
-
-    // Copy the mask to constant memory
-    cudaMemcpyToSymbol(mask, maskElements, MASK_SIZE * sizeof(int));
-
-    cudaMalloc((void**)&d_input, sizeof(int) * width);
-    cudaMalloc((void**)&d_output, sizeof(int) * width);
-    cudaMemcpy(d_input, input, sizeof(int) * width, cudaMemcpyHostToDevice);
-
+void performConvolution(int* N,int* M,int* P,int width,int mask_width){
+    int* d_N,*d_P;
+    int size = sizeof(int)*width;
+    int mask_size = sizeof(int)*mask_width;
+    cudaMalloc((void**)&d_N,size);
+    cudaMalloc((void**)&d_P,size);
+    cudaMemcpy(d_N,N,size,cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(mask,M,mask_size);
     int blockSize = 256;
-    int gridSize = (width + blockSize - 1) / blockSize;
-    convolution<<<gridSize, blockSize>>>(d_input, d_output, width);
-    cudaMemcpy(output, d_output, sizeof(int) * width, cudaMemcpyDeviceToHost);
+    int gridSize = (width + blockSize - 1)/ blockSize;
+    convolution<<<gridSize,blockSize>>>(d_N,d_P,width,mask_width);
+    cudaMemcpy(P,d_P,size,cudaMemcpyDeviceToHost);
+    cudaFree(d_N);
+    cudaFree(d_P);
+}
 
+int main(){
+    int* N,*M,*P,width,mask_width;
+    printf("Enter the width:\n");
+    scanf("%d",&width);
+    printf("Enter the mask width:\n");
+    scanf("%d",&mask_width);
+    int size = sizeof(int)*width;
+    int mask_size = sizeof(int)*mask_width;
+    N = (int*)malloc(size);
+    M = (int*)malloc(mask_size);
+    P = (int*)malloc(size);
+    printf("Enter the array elements:\n");
+    for(int i = 0;i < width;i++)
+        scanf("%d",&N[i]);
+    printf("Enter the mask elements:\n");
+    for(int i = 0; i < mask_width;i++)
+        scanf("%d",&M[i]);
+    performConvolution(N,M,P,width,mask_width);
     printf("Result:\n");
-    for (int i = 0; i < width; i++) {
-        printf("%d ", output[i]);
-    }
-
-    cudaFree(d_input);
-    cudaFree(d_output);
-    free(input);
-    free(output);
-
+    for(int i = 0;i < width;i++)
+        printf("%d ", P[i]);
+    free(N);
+    free(M);
+    free(P);
     return 0;
 }
