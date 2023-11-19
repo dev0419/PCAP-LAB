@@ -48,7 +48,7 @@ __device__ void merge_sequential(int* a,int m,int* b,int n,int* c){
 __global__ void merge(int* a,int m,int* b,int n,int* c){
     int tid = blockIdx.x*blockDim.x + threadIdx.x;
     int total = m + n;
-    int elementsPerThread = ceil((double)total/(gridDim.x*blockIdx.x));
+    int elementsPerThread = ceil((double)total/(gridDim.x*blockDim.x));
     int k_curr = tid*elementsPerThread;
     int k_next = min((int)(tid + 1)*elementsPerThread,total);
     int i_curr = co_rank(k_curr,a,m,b,n);
