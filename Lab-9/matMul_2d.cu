@@ -10,7 +10,7 @@ __global__ void matMul(int* a,int* b,int* c){
     int res = 0;
     if(row < WIDTH && col < WIDTH){
         for(int k = 0;k < WIDTH;k++){
-            res = a[row*WIDTH + k]*b[k*WIDTH + col];
+            res += a[row*WIDTH + k]*b[k*WIDTH + col];
         }
         c[row*WIDTH + col] = res;
     }
